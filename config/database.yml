@@ -1,0 +1,67 @@
+# PostgreSQL. Versions 9.5 and up are supported.
+#
+# Install the pg driver:
+#   gem install pg
+# On macOS with Homebrew:
+#   gem install pg -- --with-pg-config=/opt/homebrew/bin/pg_config
+# On Windows:
+#   gem install pg
+#       Choose the win32 build.
+#       Install PostgreSQL and put its /bin directory on your path.
+#
+# Configure Using Gemfile
+# gem "pg"
+#
+default: &default
+  adapter: sqlite3
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  timeout: 5000
+
+development:
+  <<: *default
+  database: db/development.sqlite3
+
+test:
+  <<: *default
+  database: db/test.sqlite3
+
+production:
+  <<: *default
+  database: db/production.sqlite3
+
+# PostgreSQL configuration (uncomment when PostgreSQL is available)
+# default: &default
+#   adapter: postgresql
+#   encoding: unicode
+#   max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+#
+# development:
+#   <<: *default
+#   database: project25_development
+#   username: project25
+#   password:
+#   host: localhost
+#   port: 5432
+#
+# test:
+#   <<: *default
+#   database: project25_test
+#
+# production:
+#   primary: &primary_production
+#     <<: *default
+#     database: project25_production
+#     username: project25
+#     password: <%= ENV["PROJECT25_DATABASE_PASSWORD"] %>
+#   cache:
+#     <<: *primary_production
+#     database: project25_production_cache
+#     migrations_paths: db/cache_migrate
+#   queue:
+#     <<: *primary_production
+#     database: project25_production_queue
+#     migrations_paths: db/queue_migrate
+#   cable:
+#     <<: *primary_production
+#     database: project25_production_cable
+#     migrations_paths: db/cable_migrate
