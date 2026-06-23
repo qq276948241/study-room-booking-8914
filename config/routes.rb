@@ -18,6 +18,7 @@ Rails.application.routes.draw do
 
       resources :reservations, only: [:index, :show, :create] do
         post 'cancel', on: :member
+        post 'extend', on: :member
       end
 
       resources :transactions, only: [:index] do

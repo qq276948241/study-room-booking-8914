@@ -56,6 +56,71 @@ class Reservation < ApplicationRecord
     start_time > Time.current
   end
 
+  def extend_booking(new_end_time)
+    unless status == 'confirmed'
+      errors.add(:base, '只能续约已确认的预约')
+      return false
+    end
+
+    unless new_end_time > end_time
+      errors.add(:end_time, '必须晚于当前预约结束时间')
+      return false
+    end
+
+    extend_start = end_time
+    extend_end = new_end_time
+    extend_duration = ((extend_end - extend_start) / 3600).round(2)
+
+    if extend_duration <= 0
+      errors.add(:base, '续约时长必须大于0')
+      return false
+    end
+
+    if extend_duration > 24
+      errors.add(:base, '单次续约时长不能超过24小时')
+      return false
+    end
+
+    extend_amount = (extend_duration * seat.zone.hourly_rate).round(2)
+
+    overlapping = Reservation
+      .where(seat: seat)
+      .where(status: ['confirmed', 'completed'])
+      .where.not(id: id)
+      .where('start_time < ? AND end_time > ?', extend_end, extend_start)
+
+    if overlapping.exists?
+      errors.add(:base, '续约时段该座位已被预约')
+      return false
+    end
+
+    if user.balance < extend_amount
+      errors.add(:base, '余额不足，请先充值')
+      return false
+    end
+
+    ActiveRecord::Base.transaction do
+      new_total = (total_amount + extend_amount).round(2)
+      update!(end_time: extend_end, total_amount: new_total)
+
+      user.update!(balance: user.balance - extend_amount)
+      user.transactions.create!(
+        transaction_type: 'consumption',
+        amount: extend_amount,
+        balance_after: user.balance,
+        reservation: self,
+        description: "续约 #{seat.zone.name} #{seat.seat_number} 座位，延长 #{extend_duration} 小时"
+      )
+    end
+    true
+  end
+
+  def can_extend?
+    return false unless status == 'confirmed'
+
+    end_time > Time.current
+  end
+
   private
 
   def validate_time_range

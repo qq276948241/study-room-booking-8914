@@ -1,5 +1,5 @@
 class Api::V1::ReservationsController < ApplicationController
-  before_action :set_reservation, only: [:show, :cancel]
+  before_action :set_reservation, only: [:show, :cancel, :extend]
 
   def index
     scope = Reservation.includes(:user, seat: :zone).all
@@ -50,7 +50,28 @@ class Api::V1::ReservationsController < ApplicationController
         reservation: reservation_response(@reservation)
       }, status: :ok
     else
-      render json: { error: '无法取消此预约' }, status: :unprocessable_entity
+      render json: { error: @reservation.errors.full_messages.presence || '无法取消此预约' }, status: :unprocessable_entity
+    end
+  end
+
+  def extend
+    if !current_user.is_admin && @reservation.user_id != current_user.id
+      return render json: { error: '无权续借此预约' }, status: :forbidden
+    end
+
+    new_end_time = params[:end_time]&.to_time
+
+    if new_end_time.blank?
+      return render json: { error: '请提供新的结束时间' }, status: :bad_request
+    end
+
+    if @reservation.extend_booking(new_end_time)
+      render json: {
+        message: '续约成功',
+        reservation: reservation_response(@reservation.reload)
+      }, status: :ok
+    else
+      render json: { errors: @reservation.errors.full_messages.presence || ['无法续约此预约'] }, status: :unprocessable_entity
     end
   end
 
@@ -82,6 +103,7 @@ class Api::V1::ReservationsController < ApplicationController
       total_amount: reservation.total_amount.to_f,
       status: reservation.status,
       can_cancel: reservation.can_cancel?,
+      can_extend: reservation.can_extend?,
       created_at: reservation.created_at
     }
   end
